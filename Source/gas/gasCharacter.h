@@ -3,11 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "AbilitySystemInterface.h"
 #include "GameFramework/Character.h"
 #include "gasCharacter.generated.h"
 
 UCLASS(config=Game)
-class AgasCharacter : public ACharacter
+class AgasCharacter : public ACharacter, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
@@ -25,7 +26,20 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Input)
 	float TurnRateGamepad;
 
+	
+	// 实现接口
+	virtual class UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+
+	// 角色被控制时调用的函数
+	virtual void PossessedBy(AController* NewController) override;
 protected:
+	// 能力系统组件 成员
+	UPROPERTY()
+	class UAbilitySystemComponent* AbilitySystemComponent;
+
+	// 冲刺能力
+	UPROPERTY(BlueprintReadOnly, EditAnywhere)
+	TSubclassOf<class UGameplayAbility> SprintAbility;
 
 	/** Called for forwards/backward input */
 	void MoveForward(float Value);

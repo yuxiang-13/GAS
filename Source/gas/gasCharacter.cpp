@@ -1,6 +1,10 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "gasCharacter.h"
+
+#include "AbilitySystemComponent.h"
+#include "gas.h"
+#include "Abilities/GameplayAbility_CharacterJump.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
@@ -13,6 +17,9 @@
 
 AgasCharacter::AgasCharacter()
 {
+	// 初始化 能力组件
+	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
 
@@ -51,6 +58,29 @@ AgasCharacter::AgasCharacter()
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 }
 
+UAbilitySystemComponent* AgasCharacter::GetAbilitySystemComponent() const
+{
+	return AbilitySystemComponent;
+}
+
+void AgasCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+	if (GetLocalRole() != ROLE_Authority || !IsValid(AbilitySystemComponent))
+	{
+		return;
+	}
+
+	AbilitySystemComponent->GiveAbility(
+		FGameplayAbilitySpec(UGameplayAbility_CharacterJump::StaticClass(), 1, static_cast<int32>(EGAS0AbilityInputID::Jump), this));
+
+	if (SprintAbility)
+	{
+		AbilitySystemComponent->GiveAbility(
+			FGameplayAbilitySpec(SprintAbility, 1, static_cast<int32>(EGAS0AbilityInputID::Sprint), this));
+	}
+}
+
 //////////////////////////////////////////////////////////////////////////
 // Input
 
@@ -58,8 +88,25 @@ void AgasCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInput
 {
 	// Set up gameplay key bindings
 	check(PlayerInputComponent);
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
-	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
+	// PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
+	// PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
+
+
+	if (IsValid(AbilitySystemComponent))
+	{
+		// 能力組件 綁定
+		AbilitySystemComponent->BindAbilityActivationToInputComponent(PlayerInputComponent,
+			FGameplayAbilityInputBinds(
+				FString(),
+				FString(),
+				FString(TEXT("EGAS0AbilityInputID")), // 定義的 技能枚舉名字
+				static_cast<int32>(EGAS0AbilityInputID::None),
+				static_cast<int32>(EGAS0AbilityInputID::None)
+			)
+		);
+	}
+
+	
 
 	PlayerInputComponent->BindAxis("Move Forward / Backward", this, &AgasCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("Move Right / Left", this, &AgasCharacter::MoveRight);
